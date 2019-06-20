@@ -1,0 +1,264 @@
+unit UColumn;
+
+interface
+
+uses
+  UFaseSos;
+
+type
+
+  TCubeCol = class
+     Rashodi: record            //моль/сек
+       F: double;  // питание
+       W: double;  // отбор куба
+       V: double;  // паровой поток из куба
+       L: double;  // жидкий поток в куб
+       N: double;  // количество вещества в кубе
+     end;
+     Teplota: record
+       Q_F: double;  // теплота питание
+       Q_W: double;  // теплота отбор куба
+       Q_V: double;  // теплота паровой поток из куба
+       Q_L: double;  // теплота жидкий поток в куб
+       Q_N: double;  // теплота количество вещества в кубе
+
+       Cp_F: double;  // теплоемкость питание
+       Cp_W: double;  // теплоемкость отбор куба
+       Cp_V: double;  // теплоемкость паровой поток из куба
+       Cp_L: double;  // теплоемкость жидкий поток в куб
+       Cp_N: double;  // теплоемкость количество вещества в кубе
+
+       T_F: double;  // температура питание
+       T_W: double;  // температура отбор куба
+       T_V: double;  // температура паровой поток из куба
+       T_L: double;  // температура жидкий поток в куб
+     end;
+     Sostavi: record              //моль/моль
+       zF: TArrOfDouble;  // питание
+       xW: TArrOfDouble;  // отбор куба
+       yV: TArrOfDouble;  // паровой поток из куба
+       xL: TArrOfDouble;  // жидкий поток в куб
+       zN: TArrOfDouble;  // количество вещества в кубе
+     end;
+     Geometry: record     //м
+       Diam: double;  // диаметр куба
+       High: double;  // Высота куба
+
+     end;
+     LevelCurrent: double;  // уровень текущий в кубе  %
+     LevelUst: double;  // уровень уставка в кубе       %
+     LevelK: double;  // коэффициент пропорциональности
+
+     T: double;  // температура в кубе     К
+     P: double;  // давление в кубе        Па
+     dt: double;  // шаг по времени        сек
+
+     procedure SetSostavi(
+       zF: TArrOfDouble;  // питание
+       xW: TArrOfDouble;  // отбор куба
+       yV: TArrOfDouble;  // паровой поток из куба
+       xL: TArrOfDouble;  // жидкий поток в куб
+       zN: TArrOfDouble);
+     procedure SetRashodi(
+       F: double;  // питание
+       W: double;  // отбор куба
+       V: double;  // паровой поток из куба
+       L: double;  // жидкий поток в куб
+       N: double  // количество вещества в кубе
+       );
+     procedure SetGeometry(
+        Diam: double;  // диаметр куба
+        High: double  // Высота куба
+      );
+
+     procedure SetAutomat(
+        LevelUst: double;  // уровень уставка в кубе       %
+        LevelK: double;  // коэффициент пропорциональности
+        dt: double       // шаг интегрирования
+     );
+     procedure SetTechParam(
+        _T: double;  // температура в кубе     К
+        _P: double;  // давление в кубе        Па
+        T_F: double;  // температура питание
+        T_W: double;  // температура отбор куба
+        T_V: double;  // температура паровой поток из куба
+        T_L: double  // температура жидкий поток в куб
+     );
+
+     procedure BalanceMaterial; //расчет материального баланса
+     procedure CalcLevel;     // расчет уровня жидкости
+     function getPl: double;  // плотность молярная жидкости в кубе
+     procedure RecalcVapour; // пересчитать расход пара по регулятору
+     procedure ExecuteAp;  // произвести расчет
+     procedure BalanceTeplot; // расчет теплового баланса
+
+
+  end;
+
+implementation
+
+{ TCubeCol }
+
+procedure TCubeCol.BalanceMaterial;
+var
+  i: integer;
+  N_old: double;
+  FazeSost:TFazeSost;
+begin
+  N_old:=Rashodi.N;
+  //пересчет общих расходов
+  with Rashodi do
+    N:=N+(F-W+L-V)*dt;
+  // пересчет составов внутри
+  with Sostavi do
+  begin
+    for I := 0 to Length(zN)-1 do
+    begin
+      with Rashodi do
+        zN[i]:=(zN[i]*N_old+(zF[i]*F-
+                  xW[i]*W+xL[i]*L-yV[i]*V)*dt)/N;
+
+    end;
+  end;
+  //пересчет состава по равновесию
+  FazeSost:=TFazeSost.Create;
+  FazeSost.Calculation(T, P, Sostavi.zN, Rashodi.N, Rashodi.W, Rashodi.V, Sostavi.xW, Sostavi.yV);
+  FazeSost.Free;
+
+  //тепловой баланс
+  BalanceTeplot;
+
+end;
+
+procedure TCubeCol.BalanceTeplot;
+var
+  TermoPak:TTermoPak;
+  Ttek: double;
+begin
+  TermoPak:=TTermoPak.Create;
+  with Teplota do
+  begin
+    T:=T+273.15;
+    T_F:=T_F+273.15;
+    T_L:=T_l+273.15;
+    T_W:=T_W+273.15;
+    T_V:=T_V+273.15;
+    repeat
+      Ttek:=T;
+      Cp_F:=TermoPak.GetCp(Sostavi.zF,T_F);
+      Cp_L:=TermoPak.GetCp(Sostavi.xL,T_L);
+      Cp_W:=TermoPak.GetCp(Sostavi.xW,T_W);
+      Cp_V:=TermoPak.GetCp(Sostavi.yV,T_V);
+      Cp_N:=TermoPak.GetCp(Sostavi.zN, T);
+
+      Q_N:=Rashodi.N*T*Cp_N;
+      Q_F:=Rashodi.F*T_F*Cp_F;
+      Q_L:=Rashodi.L*T_L*Cp_L;
+      Q_W:=Rashodi.W*T_W*Cp_W;
+      Q_V:=Rashodi.V*T_V*Cp_V;
+      T:=(Q_N+(Q_F+Q_L-Q_W-Q_V)*dt)/(Rashodi.N*Cp_N);
+      T_W:=T;
+      T_V:=T;
+    until abs(Ttek-T)<0.01;
+  end;
+  TermoPak.Free;
+end;
+
+procedure TCubeCol.CalcLevel;
+var
+  Vc: double; // объем куба
+  Vzh: double; // объем жидкости в кубе
+begin
+  with Geometry do
+    Vc:=High*3.14*Diam*Diam/4;
+
+  // тут надо знать жидкость, т.е. после пересчета фазового состояния
+  Vzh:=Rashodi.N/getPl;
+  LevelCurrent:=Vzh/Vc*100; //в %
+
+end;
+
+procedure TCubeCol.ExecuteAp;
+begin
+  BalanceMaterial;
+  CalcLevel;
+  RecalcVapour;
+end;
+
+function TCubeCol.getPl: double;
+begin
+  result:=1;
+end;
+
+procedure TCubeCol.RecalcVapour;
+begin
+  with Rashodi do
+  begin
+    W:=F-V+L;
+    W:=W*(1-LevelK*(LevelUst-LevelCurrent)/LevelUst);
+
+    if W<0 then W:=0;
+
+  end;
+end;
+
+procedure TCubeCol.SetAutomat(LevelUst, LevelK, dt: double);
+begin
+  self.LevelUst:=LevelUst;
+  self.LevelK:=LevelK;
+  self.dt:=dt;
+end;
+
+procedure TCubeCol.SetGeometry(Diam, High: double);
+begin
+  self.Geometry.Diam:=Diam;
+  self.Geometry.High:=High;
+end;
+
+procedure TCubeCol.SetRashodi(F, W, V, L, N: double);
+begin
+  self.Rashodi.F:=F;
+  self.Rashodi.W:=W;
+  self.Rashodi.V:=V;
+  self.Rashodi.L:=L;
+  self.Rashodi.N:=N;
+
+end;
+
+procedure TCubeCol.SetSostavi(zF, xW, yV, xL, zN: TArrOfDouble);
+var
+  i: integer;
+begin
+  SetLength(self.Sostavi.zF, Length(zF));
+  SetLength(self.Sostavi.xW, Length(xW));
+  SetLength(self.Sostavi.yV, Length(yV));
+  SetLength(self.Sostavi.xL, Length(xL));
+  SetLength(self.Sostavi.zN, Length(zN));
+
+  for I := 0 to Length(zF)-1 do
+  begin
+    self.Sostavi.zF[i]:=zF[i];
+    self.Sostavi.xW[i]:=xW[i];
+    self.Sostavi.yV[i]:=yV[i];
+    self.Sostavi.xL[i]:=xL[i];
+    self.Sostavi.zN[i]:=zN[i];
+  end;
+
+end;
+
+procedure TCubeCol.SetTechParam(_T, _P: double; T_F: double;  // температура питание
+        T_W: double;  // температура отбор куба
+        T_V: double;  // температура паровой поток из куба
+        T_L: double  // температура жидкий поток в куб);
+        );
+begin
+  T:=_T;
+  P:=_P;
+  Self.Teplota.T_F:=T_F;
+  Self.Teplota.T_W:=T_W;
+  Self.Teplota.T_V:=T_V;
+  Self.Teplota.T_L:=T_L;
+
+end;
+
+end.

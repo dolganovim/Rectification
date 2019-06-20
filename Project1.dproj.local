@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.787,=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.664,=C:\Users\Игорь\Колонна\Unit3.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.732,C:\Users\Игорь\Колонна\Unit1.pas=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.841,=C:\Users\Игорь\Колонна\Unit2.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.746,=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.437,=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.333,C:\Users\Игорь\Колонна\Project1.dproj=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.732,C:\Users\Игорь\Колонна\Unit1.dfm=C:\Users\Игорь\Documents\Embarcadero\Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>2019.06.20 09:00:57.507,=C:\Users\Игорь\Колонна\Unit3.pas</Transaction>
+    <Transaction>2019.06.20 09:01:50.883,C:\Users\Игорь\Колонна\UColumn.pas=C:\Users\Игорь\Колонна\Unit3.pas</Transaction>
+    <Transaction>2019.06.20 09:04:27.906,C:\Users\Игорь\Колонна\UFaseSos.pas=C:\Users\Игорь\Колонна\Unit2.pas</Transaction>
+  </Transactions>
+</BorlandProject>
